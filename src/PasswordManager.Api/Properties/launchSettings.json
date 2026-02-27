@@ -1,0 +1,15 @@
+{
+  "$schema": "http://json.schemastore.org/launchsettings.json",
+  "profiles": {
+    "PasswordManager.Api": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "launchBrowser": true,
+      "launchUrl": "swagger",
+      "applicationUrl": "https://localhost:7096;http://localhost:5096",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    }
+  }
+}

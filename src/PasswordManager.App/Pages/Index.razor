@@ -1,0 +1,113 @@
+@page "/"
+@inject ApiClient ApiClient
+@inject AuthState AuthState
+
+@if (!AuthState.IsAuthenticated)
+{
+    <MudPaper Class="pa-6 mx-auto" MaxWidth="MaxWidth.Small">
+        <MudText Typo="Typo.h5" Class="mb-4">Login</MudText>
+        <MudTextField Label="Usuário" @bind-Value="login.Username" Variant="Variant.Outlined" />
+        <MudTextField Label="Senha" InputType="InputType.Password" @bind-Value="login.Password" Variant="Variant.Outlined" Class="mt-3" />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="PerformLogin" Class="mt-4">Entrar</MudButton>
+
+        @if (!string.IsNullOrWhiteSpace(loginError))
+        {
+            <MudAlert Severity="Severity.Error" Class="mt-3">@loginError</MudAlert>
+        }
+    </MudPaper>
+}
+else
+{
+    <MudGrid>
+        <MudItem xs="12" md="5">
+            <MudPaper Class="pa-4">
+                <MudText Typo="Typo.h6" Class="mb-3">Nova senha</MudText>
+
+                <MudTextField Label="Descrição" @bind-Value="form.Description" Variant="Variant.Outlined" />
+                <MudTextField Label="Usuário/Login" @bind-Value="form.Username" Variant="Variant.Outlined" Class="mt-3" />
+                <MudTextField Label="Senha" @bind-Value="form.Password" Variant="Variant.Outlined" Class="mt-3" />
+
+                <MudStack Row="true" Spacing="2" Class="mt-4">
+                    <MudButton Variant="Variant.Outlined" OnClick="Generate">Gerar automática</MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="Save">Salvar</MudButton>
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" md="7">
+            <MudPaper Class="pa-4">
+                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-2">
+                    <MudText Typo="Typo.h6">Senhas cadastradas</MudText>
+                    <MudButton Variant="Variant.Text" Color="Color.Secondary" OnClick="Reload">Atualizar</MudButton>
+                </MudStack>
+
+                <MudTable Items="passwords" Hover="true" Dense="true">
+                    <HeaderContent>
+                        <MudTh>Descrição</MudTh>
+                        <MudTh>Usuário</MudTh>
+                        <MudTh>Senha</MudTh>
+                        <MudTh>Criada em</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Descrição">@context.Description</MudTd>
+                        <MudTd DataLabel="Usuário">@context.Username</MudTd>
+                        <MudTd DataLabel="Senha">@context.Secret</MudTd>
+                        <MudTd DataLabel="Criada em">@context.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</MudTd>
+                    </RowTemplate>
+                </MudTable>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    private LoginRequest login = new(string.Empty, string.Empty);
+    private string? loginError;
+
+    private CreatePasswordRequest form = new(string.Empty, string.Empty, string.Empty);
+    private List<PasswordEntry> passwords = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthState.IsAuthenticated)
+        {
+            await Reload();
+        }
+    }
+
+    private async Task PerformLogin()
+    {
+        loginError = null;
+        var success = await ApiClient.LoginAsync(login);
+        if (!success)
+        {
+            loginError = "Usuário ou senha inválidos.";
+            return;
+        }
+
+        await Reload();
+    }
+
+    private async Task Generate()
+    {
+        var generated = await ApiClient.GeneratePasswordAsync(new GeneratePasswordRequest());
+        form = form with { Password = generated };
+    }
+
+    private async Task Save()
+    {
+        if (string.IsNullOrWhiteSpace(form.Description) || string.IsNullOrWhiteSpace(form.Username))
+        {
+            return;
+        }
+
+        await ApiClient.CreatePasswordAsync(form);
+        form = new CreatePasswordRequest(string.Empty, string.Empty, string.Empty);
+        await Reload();
+    }
+
+    private async Task Reload()
+    {
+        passwords = (await ApiClient.GetPasswordsAsync()).ToList();
+    }
+}
