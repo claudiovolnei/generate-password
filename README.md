@@ -4,7 +4,7 @@ Aplicação completa para **gestão de senhas** baseada em uma arquitetura semel
 
 - **Backend** em **ASP.NET Core Minimal API**.
 - **Autenticação JWT (login)**.
-- **Swagger** com suporte a Bearer token.
+- **Swagger** protegido por usuário/senha (Basic Auth) e suporte a Bearer token.
 - **Frontend** em **.NET MAUI Blazor** com **MudBlazor**.
 - Fluxo de **geração automática de senha** e vínculo com descrição/login.
 
@@ -34,6 +34,8 @@ PasswordManager.sln
 
 ### Backend (Minimal API)
 
+- `POST /api/auth/register`
+  - Cria um novo usuário em memória para autenticação na API.
 - `POST /api/auth/login`
   - Autentica usuário e retorna token JWT.
 - `GET /api/passwords/` (protegido)
@@ -62,6 +64,10 @@ Definidas em `UsersStore`:
 
 - `admin / Admin@123`
 - `gestor / Gestor@123`
+
+Credenciais de acesso ao Swagger (Basic Auth), definidas em `appsettings.json`:
+
+- `swagger / Swagger@123`
 
 > Recomenda-se mover para um provedor seguro (Identity/DB + hashing) em produção.
 
