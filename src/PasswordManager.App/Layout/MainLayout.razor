@@ -1,0 +1,17 @@
+@inherits LayoutComponentBase
+
+<MudThemeProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<MudLayout>
+    <MudAppBar Elevation="1" Color="Color.Primary">
+        <MudText Typo="Typo.h6">Password Manager</MudText>
+    </MudAppBar>
+
+    <MudMainContent>
+        <div class="page-container">
+            @Body
+        </div>
+    </MudMainContent>
+</MudLayout>
