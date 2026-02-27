@@ -26,4 +26,7 @@ public class InMemoryPasswordRepository : IPasswordRepository
         _entries.TryAdd(entry.Id, entry);
         return entry;
     }
+
+    public bool Delete(Guid id) =>
+        _entries.TryRemove(id, out _);
 }

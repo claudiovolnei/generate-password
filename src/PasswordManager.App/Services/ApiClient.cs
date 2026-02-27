@@ -13,7 +13,7 @@ public class ApiClient
         _authState = authState;
         _httpClient = new HttpClient
         {
-            BaseAddress = new Uri("http://localhost:5096")
+            BaseAddress = new Uri("http://password-manager.runasp.net")
         };
     }
 
@@ -55,5 +55,10 @@ public class ApiClient
         response.EnsureSuccessStatusCode();
 
         return await response.Content.ReadFromJsonAsync<PasswordEntry>();
+    }
+    public async Task DeletePasswordAsync(Guid id)
+    {
+        var response = await _httpClient.DeleteAsync($"/api/passwords/{id}");
+        response.EnsureSuccessStatusCode();
     }
 }

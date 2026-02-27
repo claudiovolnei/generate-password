@@ -220,4 +220,11 @@ passwords.MapPost("/", (CreatePasswordRequest request, IPasswordRepository repos
     return Results.Created($"/api/passwords/{entry.Id}", entry);
 });
 
+passwords.MapDelete("/{id:guid}", (Guid id, IPasswordRepository repository) =>
+{
+    var deleted = repository.Delete(id);
+    return deleted ? Results.NoContent() : Results.NotFound();
+});
+
+
 app.Run();

@@ -7,12 +7,16 @@
 @if (!AuthState.IsAuthenticated)
 {
     <MudPaper Class="pa-8 mx-auto login-card modern-surface" MaxWidth="MaxWidth.Small" Elevation="4">
-        <MudText Typo="Typo.h5" Class="mb-1">Acesse o cofre</MudText>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mb-2">
+            <MudIcon Icon="@Icons.Material.Filled.Security" Color="Color.Primary" />
+            <MudText Typo="Typo.h5">Acesse o cofre</MudText>
+        </MudStack>
         <MudText Typo="Typo.body2" Class="mb-4 text-muted">Faça login para gerenciar suas senhas com segurança.</MudText>
 
         <MudTextField Label="Usuário" @bind-Value="login.Username" Variant="Variant.Outlined" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Person" />
         <MudTextField Label="Senha" InputType="InputType.Password" @bind-Value="login.Password" Variant="Variant.Outlined" Class="mt-3" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Lock" />
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="PerformLogin" Class="mt-4" FullWidth="true" StartIcon="@Icons.Material.Filled.Login">Entrar</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="PerformLogin" Class="mt-4" FullWidth="true" StartIcon="@Icons.Material.Filled.Login" Loading="isLoggingIn" Disabled="isLoggingIn">Entrar</MudButton>
+
 
         @if (!string.IsNullOrWhiteSpace(loginError))
         {
@@ -25,7 +29,10 @@ else
     <MudGrid>
         <MudItem xs="12" md="5">
             <MudPaper Class="pa-5 modern-surface" Elevation="2">
-                <MudText Typo="Typo.h6" Class="mb-1">Nova senha</MudText>
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mb-1">
+                    <MudIcon Icon="@Icons.Material.Filled.Key" Color="Color.Primary" />
+                    <MudText Typo="Typo.h6">Nova senha</MudText>
+                </MudStack>
                 <MudText Typo="Typo.body2" Class="mb-4 text-muted">Crie e salve uma credencial com aparência profissional.</MudText>
 
                 <MudTextField Label="Descrição" @bind-Value="form.Description" Variant="Variant.Outlined" />
@@ -33,8 +40,8 @@ else
                 <MudTextField Label="Senha" @bind-Value="form.Password" Variant="Variant.Outlined" Class="mt-3" />
 
                 <MudStack Row="true" Spacing="2" Class="mt-4">
-                    <MudButton Variant="Variant.Outlined" OnClick="Generate" StartIcon="@Icons.Material.Filled.AutoFixHigh" Disabled="isGenerating">Gerar automática</MudButton>
-                    <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="Save" StartIcon="@Icons.Material.Filled.Save" Disabled="isSaving">Salvar</MudButton>
+                    <MudButton Variant="Variant.Outlined" OnClick="Generate" StartIcon="@Icons.Material.Filled.AutoFixHigh" Disabled="isGenerating" Loading="isGenerating">Gerar automática</MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="Save" StartIcon="@Icons.Material.Filled.Save" Disabled="isSaving" Loading="isSaving">Salvar</MudButton>
                     <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => CopyPassword(form.Password))" StartIcon="@Icons.Material.Filled.ContentCopy" Disabled="isCopying">Copiar senha</MudButton>
                 </MudStack>
 
@@ -71,7 +78,11 @@ else
                         <MudTd DataLabel="Senha">@context.Secret</MudTd>
                         <MudTd DataLabel="Criada em">@context.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</MudTd>
                         <MudTd DataLabel="Ações">
-                            <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" Color="Color.Primary" Size="Size.Small" OnClick="@(() => CopyPassword(context.Secret))" aria-label="Copiar senha" />
+                            <MudStack Row="true" Spacing="1">
+                                <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" Color="Color.Primary" Size="Size.Small" OnClick="@(() => CopyPassword(context.Secret))" aria-label="Copiar senha" />
+                                <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Error" StartIcon="@Icons.Material.Filled.Delete" OnClick="@(() => DeletePassword(context.Id))" Loading="deletingPasswordId == context.Id" Disabled="deletingPasswordId == context.Id">
+                                </MudButton>
+                            </MudStack>
                         </MudTd>
                     </RowTemplate>
                 </MudTable>
@@ -90,6 +101,8 @@ else
     private bool isGenerating;
     private bool isSaving;
     private bool isCopying;
+    private bool isLoggingIn;
+    private Guid? deletingPasswordId;
 
     protected override async Task OnInitializedAsync()
     {
@@ -102,14 +115,22 @@ else
     private async Task PerformLogin()
     {
         loginError = null;
-        var success = await ApiClient.LoginAsync(login);
-        if (!success)
+        try
         {
-            loginError = "Usuário ou senha inválidos.";
-            return;
-        }
+            isLoggingIn = true;
+            var success = await ApiClient.LoginAsync(login);
+            if (!success)
+            {
+                loginError = "Usuário ou senha inválidos.";
+                return;
+            }
 
-        await Reload();
+            await Reload();
+        }
+        finally
+        {
+            isLoggingIn = false;
+        }
     }
 
     private async Task Generate()
@@ -128,6 +149,25 @@ else
         finally
         {
             isGenerating = false;
+        }
+    }
+
+    private async Task DeletePassword(Guid id)
+    {
+        try
+        {
+            deletingPasswordId = id;
+            await ApiClient.DeletePasswordAsync(id);
+            await Reload();
+            Snackbar.Add("Senha excluída com sucesso.", Severity.Success);
+        }
+        catch
+        {
+            Snackbar.Add("Não foi possível excluir a senha.", Severity.Error);
+        }
+        finally
+        {
+            deletingPasswordId = null;
         }
     }
 

@@ -36,4 +36,17 @@ public class SqlPasswordRepository(PasswordManagerDbContext dbContext, SecretMas
 
         return entry;
     }
+
+    public bool Delete(Guid id)
+    {
+        var entry = dbContext.PasswordEntries.FirstOrDefault(item => item.Id == id);
+        if (entry is null)
+        {
+            return false;
+        }
+
+        dbContext.PasswordEntries.Remove(entry);
+        dbContext.SaveChanges();
+        return true;
+    }
 }
