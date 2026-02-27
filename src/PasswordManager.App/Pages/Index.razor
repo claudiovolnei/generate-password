@@ -1,14 +1,18 @@
 @page "/"
 @inject ApiClient ApiClient
 @inject AuthState AuthState
+@inject IJSRuntime JsRuntime
+@inject ISnackbar Snackbar
 
 @if (!AuthState.IsAuthenticated)
 {
-    <MudPaper Class="pa-6 mx-auto" MaxWidth="MaxWidth.Small">
-        <MudText Typo="Typo.h5" Class="mb-4">Login</MudText>
-        <MudTextField Label="Usuário" @bind-Value="login.Username" Variant="Variant.Outlined" />
-        <MudTextField Label="Senha" InputType="InputType.Password" @bind-Value="login.Password" Variant="Variant.Outlined" Class="mt-3" />
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="PerformLogin" Class="mt-4">Entrar</MudButton>
+    <MudPaper Class="pa-8 mx-auto login-card modern-surface" MaxWidth="MaxWidth.Small" Elevation="4">
+        <MudText Typo="Typo.h5" Class="mb-1">Acesse o cofre</MudText>
+        <MudText Typo="Typo.body2" Class="mb-4 text-muted">Faça login para gerenciar suas senhas com segurança.</MudText>
+
+        <MudTextField Label="Usuário" @bind-Value="login.Username" Variant="Variant.Outlined" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Person" />
+        <MudTextField Label="Senha" InputType="InputType.Password" @bind-Value="login.Password" Variant="Variant.Outlined" Class="mt-3" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Lock" />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="PerformLogin" Class="mt-4" FullWidth="true" StartIcon="@Icons.Material.Filled.Login">Entrar</MudButton>
 
         @if (!string.IsNullOrWhiteSpace(loginError))
         {
@@ -20,25 +24,37 @@ else
 {
     <MudGrid>
         <MudItem xs="12" md="5">
-            <MudPaper Class="pa-4">
-                <MudText Typo="Typo.h6" Class="mb-3">Nova senha</MudText>
+            <MudPaper Class="pa-5 modern-surface" Elevation="2">
+                <MudText Typo="Typo.h6" Class="mb-1">Nova senha</MudText>
+                <MudText Typo="Typo.body2" Class="mb-4 text-muted">Crie e salve uma credencial com aparência profissional.</MudText>
 
                 <MudTextField Label="Descrição" @bind-Value="form.Description" Variant="Variant.Outlined" />
                 <MudTextField Label="Usuário/Login" @bind-Value="form.Username" Variant="Variant.Outlined" Class="mt-3" />
                 <MudTextField Label="Senha" @bind-Value="form.Password" Variant="Variant.Outlined" Class="mt-3" />
 
                 <MudStack Row="true" Spacing="2" Class="mt-4">
-                    <MudButton Variant="Variant.Outlined" OnClick="Generate">Gerar automática</MudButton>
-                    <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="Save">Salvar</MudButton>
+                    <MudButton Variant="Variant.Outlined" OnClick="Generate" StartIcon="@Icons.Material.Filled.AutoFixHigh">Gerar automática</MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="Save" StartIcon="@Icons.Material.Filled.Save">Salvar</MudButton>
+                    <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => CopyPassword(form.Password))" StartIcon="@Icons.Material.Filled.ContentCopy">Copiar senha</MudButton>
                 </MudStack>
+
+                @if (!string.IsNullOrWhiteSpace(lastCreatedPassword))
+                {
+                    <MudAlert Severity="Severity.Success" Variant="Variant.Outlined" Dense="true" Class="mt-4">
+                        Senha criada com sucesso: <strong>@lastCreatedPassword</strong>
+                        <MudButton Size="Size.Small" Variant="Variant.Text" Class="ml-2" StartIcon="@Icons.Material.Filled.ContentCopy" OnClick="@(() => CopyPassword(lastCreatedPassword))">
+                            Copiar
+                        </MudButton>
+                    </MudAlert>
+                }
             </MudPaper>
         </MudItem>
 
         <MudItem xs="12" md="7">
-            <MudPaper Class="pa-4">
+            <MudPaper Class="pa-5 modern-surface" Elevation="2">
                 <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-2">
                     <MudText Typo="Typo.h6">Senhas cadastradas</MudText>
-                    <MudButton Variant="Variant.Text" Color="Color.Secondary" OnClick="Reload">Atualizar</MudButton>
+                    <MudButton Variant="Variant.Text" Color="Color.Secondary" OnClick="Reload" StartIcon="@Icons.Material.Filled.Refresh">Atualizar</MudButton>
                 </MudStack>
 
                 <MudTable Items="passwords" Hover="true" Dense="true">
@@ -47,12 +63,16 @@ else
                         <MudTh>Usuário</MudTh>
                         <MudTh>Senha</MudTh>
                         <MudTh>Criada em</MudTh>
+                        <MudTh>Ações</MudTh>
                     </HeaderContent>
                     <RowTemplate>
                         <MudTd DataLabel="Descrição">@context.Description</MudTd>
                         <MudTd DataLabel="Usuário">@context.Username</MudTd>
                         <MudTd DataLabel="Senha">@context.Secret</MudTd>
                         <MudTd DataLabel="Criada em">@context.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</MudTd>
+                        <MudTd DataLabel="Ações">
+                            <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" Color="Color.Primary" Size="Size.Small" OnClick="@(() => CopyPassword(context.Secret))" aria-label="Copiar senha" />
+                        </MudTd>
                     </RowTemplate>
                 </MudTable>
             </MudPaper>
@@ -66,6 +86,7 @@ else
 
     private CreatePasswordRequest form = new();
     private List<PasswordEntry> passwords = [];
+    private string? lastCreatedPassword;
 
     protected override async Task OnInitializedAsync()
     {
@@ -101,9 +122,21 @@ else
             return;
         }
 
-        await ApiClient.CreatePasswordAsync(form);
+        var created = await ApiClient.CreatePasswordAsync(form);
+        lastCreatedPassword = created?.Secret;
         form = new CreatePasswordRequest();
         await Reload();
+    }
+
+    private async Task CopyPassword(string? password)
+    {
+        if (string.IsNullOrWhiteSpace(password))
+        {
+            return;
+        }
+
+        await JsRuntime.InvokeVoidAsync("navigator.clipboard.writeText", password);
+        Snackbar.Add("Senha copiada para a área de transferência.", Severity.Success);
     }
 
     private async Task Reload()

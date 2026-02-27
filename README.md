@@ -60,7 +60,7 @@ PasswordManager.sln
 
 ## Credenciais padrão para testes
 
-Definidas em `UsersStore`:
+Definidas por seed no banco (tabela `UserAccounts`):
 
 - `admin / Admin@123`
 - `gestor / Gestor@123`

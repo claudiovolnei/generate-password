@@ -1,9 +1,33 @@
 html, body {
     font-family: 'OpenSansRegular', Arial, sans-serif;
+    background: radial-gradient(circle at top left, #1f245c 0%, #0f122a 45%, #090b1f 100%);
+    color: #e9ecff;
+    min-height: 100%;
 }
 
 .page-container {
     max-width: 920px;
     margin: 0 auto;
     padding: 24px;
+}
+
+.modern-surface {
+    border-radius: 16px;
+    background: linear-gradient(135deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,.12);
+}
+
+.topbar-glass {
+    border-bottom: 1px solid rgba(255,255,255,.08);
+    background: rgba(5, 8, 28, 0.55) !important;
+    backdrop-filter: blur(10px);
+}
+
+.login-card {
+    margin-top: 64px;
+}
+
+.text-muted {
+    color: rgba(233, 236, 255, 0.72);
 }
