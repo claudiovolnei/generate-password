@@ -1,5 +1,6 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using PasswordManager.Api.Infrastructure;
 using PasswordManager.Api.Models;
@@ -11,8 +12,10 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"));
 var jwtSettings = builder.Configuration.GetSection("Jwt").Get<JwtSettings>() ?? new JwtSettings();
 
+builder.Services.AddDbContext<PasswordManagerDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("PasswordManager")));
+builder.Services.AddScoped<IPasswordRepository, SqlPasswordRepository>();
 builder.Services.AddSingleton<JwtTokenService>();
-builder.Services.AddSingleton<IPasswordRepository, InMemoryPasswordRepository>();
 builder.Services.AddSingleton<IPasswordGenerator, PasswordGenerator>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -70,6 +73,12 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<PasswordManagerDbContext>();
+    dbContext.Database.Migrate();
+}
 
 app.UseSwagger();
 app.UseSwaggerUI();
