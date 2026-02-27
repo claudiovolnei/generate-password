@@ -16,11 +16,14 @@ var jwtSettings = builder.Configuration.GetSection("Jwt").Get<JwtSettings>() ?? 
 var swaggerUsername = builder.Configuration["SwaggerAuth:Username"] ?? "swagger";
 var swaggerPassword = builder.Configuration["SwaggerAuth:Password"] ?? "Swagger@123";
 
+builder.Services.AddDataProtection();
 builder.Services.AddDbContext<PasswordManagerDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("PasswordManager")));
 builder.Services.AddScoped<IPasswordRepository, SqlPasswordRepository>();
 builder.Services.AddSingleton<JwtTokenService>();
 builder.Services.AddSingleton<IPasswordGenerator, PasswordGenerator>();
+builder.Services.AddSingleton<PasswordHasherService>();
+builder.Services.AddScoped<SecretMaskingService>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -128,7 +131,7 @@ app.UseCors("App");
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapPost("/api/auth/register", async (RegisterUserRequest request, PasswordManagerDbContext dbContext) =>
+app.MapPost("/api/auth/register", async (RegisterUserRequest request, PasswordManagerDbContext dbContext, PasswordHasherService hasher) =>
 {
     if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
     {
@@ -147,7 +150,7 @@ app.MapPost("/api/auth/register", async (RegisterUserRequest request, PasswordMa
     {
         Id = Guid.NewGuid(),
         Username = username,
-        Password = request.Password,
+        Password = hasher.Hash(request.Password),
         CreatedAtUtc = DateTime.UtcNow
     };
 
@@ -159,12 +162,27 @@ app.MapPost("/api/auth/register", async (RegisterUserRequest request, PasswordMa
 .AllowAnonymous()
 .WithTags("Auth");
 
-app.MapPost("/api/auth/login", async (LoginRequest request, JwtTokenService tokenService, PasswordManagerDbContext dbContext) =>
+app.MapPost("/api/auth/login", async (LoginRequest request, JwtTokenService tokenService, PasswordManagerDbContext dbContext, PasswordHasherService hasher) =>
 {
     var user = await dbContext.UserAccounts.FirstOrDefaultAsync(user => user.Username == request.Username);
-    if (user is null || user.Password != request.Password)
+    if (user is null)
     {
         return Results.Unauthorized();
+    }
+
+    var isValid = user.Password.Contains('.')
+        ? hasher.Verify(request.Password, user.Password)
+        : user.Password == request.Password;
+
+    if (!isValid)
+    {
+        return Results.Unauthorized();
+    }
+
+    if (!user.Password.Contains('.'))
+    {
+        user.Password = hasher.Hash(request.Password);
+        await dbContext.SaveChangesAsync();
     }
 
     var token = tokenService.Generate(user.Username);
