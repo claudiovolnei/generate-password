@@ -115,4 +115,4 @@ $RECYCLE.BIN/
 
 #Plataforms
 *.Platforms
-/src/Finance.Api/appsettings.json
+/src/PasswordManager.Api/appsettings.json
