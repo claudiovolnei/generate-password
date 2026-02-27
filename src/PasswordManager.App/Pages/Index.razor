@@ -33,9 +33,9 @@ else
                 <MudTextField Label="Senha" @bind-Value="form.Password" Variant="Variant.Outlined" Class="mt-3" />
 
                 <MudStack Row="true" Spacing="2" Class="mt-4">
-                    <MudButton Variant="Variant.Outlined" OnClick="Generate" StartIcon="@Icons.Material.Filled.AutoFixHigh">Gerar automática</MudButton>
-                    <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="Save" StartIcon="@Icons.Material.Filled.Save">Salvar</MudButton>
-                    <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => CopyPassword(form.Password))" StartIcon="@Icons.Material.Filled.ContentCopy">Copiar senha</MudButton>
+                    <MudButton Variant="Variant.Outlined" OnClick="Generate" StartIcon="@Icons.Material.Filled.AutoFixHigh" Disabled="isGenerating">Gerar automática</MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="Save" StartIcon="@Icons.Material.Filled.Save" Disabled="isSaving">Salvar</MudButton>
+                    <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => CopyPassword(form.Password))" StartIcon="@Icons.Material.Filled.ContentCopy" Disabled="isCopying">Copiar senha</MudButton>
                 </MudStack>
 
                 @if (!string.IsNullOrWhiteSpace(lastCreatedPassword))
@@ -87,6 +87,9 @@ else
     private CreatePasswordRequest form = new();
     private List<PasswordEntry> passwords = [];
     private string? lastCreatedPassword;
+    private bool isGenerating;
+    private bool isSaving;
+    private bool isCopying;
 
     protected override async Task OnInitializedAsync()
     {
@@ -111,32 +114,72 @@ else
 
     private async Task Generate()
     {
-        var generated = await ApiClient.GeneratePasswordAsync(new GeneratePasswordRequest());
-        form = form with { Password = generated };
+        try
+        {
+            isGenerating = true;
+            var generated = await ApiClient.GeneratePasswordAsync(new GeneratePasswordRequest());
+            form = form with { Password = generated };
+            Snackbar.Add("Senha gerada com sucesso.", Severity.Success);
+        }
+        catch
+        {
+            Snackbar.Add("Não foi possível gerar a senha no momento.", Severity.Error);
+        }
+        finally
+        {
+            isGenerating = false;
+        }
     }
 
     private async Task Save()
     {
         if (string.IsNullOrWhiteSpace(form.Description) || string.IsNullOrWhiteSpace(form.Username))
         {
+            Snackbar.Add("Informe descrição e usuário para salvar.", Severity.Warning);
             return;
         }
 
-        var created = await ApiClient.CreatePasswordAsync(form);
-        lastCreatedPassword = created?.Secret;
-        form = new CreatePasswordRequest();
-        await Reload();
+        try
+        {
+            isSaving = true;
+            var created = await ApiClient.CreatePasswordAsync(form);
+            lastCreatedPassword = created?.Secret;
+            form = new CreatePasswordRequest();
+            await Reload();
+            Snackbar.Add("Senha salva com sucesso.", Severity.Success);
+        }
+        catch
+        {
+            Snackbar.Add("Não foi possível salvar a senha.", Severity.Error);
+        }
+        finally
+        {
+            isSaving = false;
+        }
     }
 
     private async Task CopyPassword(string? password)
     {
         if (string.IsNullOrWhiteSpace(password))
         {
+            Snackbar.Add("Não há senha para copiar.", Severity.Warning);
             return;
         }
 
-        await JsRuntime.InvokeVoidAsync("navigator.clipboard.writeText", password);
-        Snackbar.Add("Senha copiada para a área de transferência.", Severity.Success);
+        try
+        {
+            isCopying = true;
+            await JsRuntime.InvokeVoidAsync("appClipboard.copyText", password);
+            Snackbar.Add("Senha copiada para a área de transferência.", Severity.Success);
+        }
+        catch
+        {
+            Snackbar.Add("Não foi possível copiar a senha.", Severity.Error);
+        }
+        finally
+        {
+            isCopying = false;
+        }
     }
 
     private async Task Reload()
