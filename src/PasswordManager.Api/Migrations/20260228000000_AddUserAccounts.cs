@@ -23,15 +23,6 @@ namespace PasswordManager.Api.Migrations
                     table.PrimaryKey("PK_UserAccounts", x => x.Id);
                 });
 
-            migrationBuilder.InsertData(
-                table: "UserAccounts",
-                columns: new[] { "Id", "CreatedAtUtc", "Password", "Username" },
-                values: new object[,]
-                {
-                    { new Guid("5d9f4954-0a14-4739-b0e0-6f6470d8c415"), new DateTime(2026, 2, 27, 0, 0, 0, DateTimeKind.Utc), "Admin@123", "admin" },
-                    { new Guid("2a0f7394-dbe4-4a65-9556-50d53fa4f141"), new DateTime(2026, 2, 27, 0, 0, 0, DateTimeKind.Utc), "Gestor@123", "gestor" }
-                });
-
             migrationBuilder.CreateIndex(
                 name: "IX_UserAccounts_Username",
                 table: "UserAccounts",

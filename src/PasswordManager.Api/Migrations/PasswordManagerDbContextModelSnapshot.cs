@@ -74,22 +74,6 @@ namespace PasswordManager.Api.Migrations
                         .IsUnique();
 
                     b.ToTable("UserAccounts", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Id = new Guid("5d9f4954-0a14-4739-b0e0-6f6470d8c415"),
-                            CreatedAtUtc = new DateTime(2026, 2, 27, 0, 0, 0, DateTimeKind.Utc),
-                            Password = "Admin@123",
-                            Username = "admin"
-                        },
-                        new
-                        {
-                            Id = new Guid("2a0f7394-dbe4-4a65-9556-50d53fa4f141"),
-                            CreatedAtUtc = new DateTime(2026, 2, 27, 0, 0, 0, DateTimeKind.Utc),
-                            Password = "Gestor@123",
-                            Username = "gestor"
-                        });
                 });
 #pragma warning restore 612, 618
         }
