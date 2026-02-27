@@ -119,34 +119,55 @@ app.Use(async (context, next) =>
 });
 
 app.UseSwagger();
-app.UseSwaggerUI();
+app.UseStaticFiles();
+app.UseSwaggerUI(options =>
+{
+    options.InjectJavascript("/swagger-custom.js");
+});
 app.UseCors("App");
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapPost("/api/auth/register", (RegisterUserRequest request) =>
+app.MapPost("/api/auth/register", async (RegisterUserRequest request, PasswordManagerDbContext dbContext) =>
 {
     if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
     {
         return Results.BadRequest(new { message = "Usuário e senha são obrigatórios." });
     }
 
-    var created = UsersStore.AddUser(request.Username.Trim(), request.Password);
-    return created
-        ? Results.Created($"/api/auth/users/{request.Username}", new { username = request.Username })
-        : Results.Conflict(new { message = "Usuário já existe." });
+    var username = request.Username.Trim();
+    var userExists = await dbContext.UserAccounts
+        .AnyAsync(user => user.Username == username);
+    if (userExists)
+    {
+        return Results.Conflict(new { message = "Usuário já existe." });
+    }
+
+    var userAccount = new UserAccount
+    {
+        Id = Guid.NewGuid(),
+        Username = username,
+        Password = request.Password,
+        CreatedAtUtc = DateTime.UtcNow
+    };
+
+    dbContext.UserAccounts.Add(userAccount);
+    await dbContext.SaveChangesAsync();
+
+    return Results.Created($"/api/auth/users/{userAccount.Username}", new { username = userAccount.Username });
 })
 .AllowAnonymous()
 .WithTags("Auth");
 
-app.MapPost("/api/auth/login", (LoginRequest request, JwtTokenService tokenService) =>
+app.MapPost("/api/auth/login", async (LoginRequest request, JwtTokenService tokenService, PasswordManagerDbContext dbContext) =>
 {
-    if (!UsersStore.IsValidCredential(request.Username, request.Password))
+    var user = await dbContext.UserAccounts.FirstOrDefaultAsync(user => user.Username == request.Username);
+    if (user is null || user.Password != request.Password)
     {
         return Results.Unauthorized();
     }
 
-    var token = tokenService.Generate(request.Username);
+    var token = tokenService.Generate(user.Username);
     return Results.Ok(new { token });
 })
 .AllowAnonymous()

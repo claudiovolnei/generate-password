@@ -6,6 +6,7 @@ namespace PasswordManager.Api.Infrastructure;
 public class PasswordManagerDbContext(DbContextOptions<PasswordManagerDbContext> options) : DbContext(options)
 {
     public DbSet<PasswordEntry> PasswordEntries => Set<PasswordEntry>();
+    public DbSet<UserAccount> UserAccounts => Set<UserAccount>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -24,6 +25,22 @@ public class PasswordManagerDbContext(DbContextOptions<PasswordManagerDbContext>
                 .IsRequired();
             entity.Property(item => item.CreatedAtUtc)
                 .IsRequired();
+        });
+
+        modelBuilder.Entity<UserAccount>(entity =>
+        {
+            entity.ToTable("UserAccounts");
+            entity.HasKey(item => item.Id);
+            entity.Property(item => item.Username)
+                .HasMaxLength(100)
+                .IsRequired();
+            entity.Property(item => item.Password)
+                .HasMaxLength(500)
+                .IsRequired();
+            entity.Property(item => item.CreatedAtUtc)
+                .IsRequired();
+            entity.HasIndex(item => item.Username)
+                .IsUnique();
         });
     }
 }

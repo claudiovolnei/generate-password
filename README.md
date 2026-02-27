@@ -58,12 +58,9 @@ PasswordManager.sln
 
 ---
 
-## Credenciais padrão para testes
+## Credenciais para testes
 
-Definidas em `UsersStore`:
-
-- `admin / Admin@123`
-- `gestor / Gestor@123`
+Não há usuários padrão criados por migration. Crie um usuário via `POST /api/auth/register` antes de autenticar.
 
 Credenciais de acesso ao Swagger (Basic Auth), definidas em `appsettings.json`:
 
