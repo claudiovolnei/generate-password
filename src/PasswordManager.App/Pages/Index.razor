@@ -136,9 +136,9 @@ else
             await Reload();
             Snackbar.Add("Login realizado com sucesso.", Severity.Success);
         }
-        catch
+        catch(Exception ex)
         {
-            loginError = "Não foi possível realizar login agora. Tente novamente em instantes.";
+            loginError = $"Não foi possível realizar login agora. Tente novamente em instantes.{ex.Message}";
         }
         finally
         {
