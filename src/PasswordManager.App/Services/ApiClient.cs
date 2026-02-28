@@ -14,7 +14,7 @@ public class ApiClient
         _authState = authState;
         _httpClient = new HttpClient
         {
-            BaseAddress = new Uri("https://password-manager.runasp.net")
+            BaseAddress = new Uri("http://password-manager.runasp.net")
         };
     }
 
