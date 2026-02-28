@@ -13,9 +13,9 @@
         </MudStack>
         <MudText Typo="Typo.body2" Class="mb-4 text-muted">Faça login para gerenciar suas senhas com segurança.</MudText>
 
-        <MudTextField Label="Usuário" @bind-Value="login.Username" Variant="Variant.Outlined" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Person" />
-        <MudTextField Label="Senha" InputType="InputType.Password" @bind-Value="login.Password" Variant="Variant.Outlined" Class="mt-3" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Lock" />
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="PerformLogin" Class="mt-4" FullWidth="true" StartIcon="@Icons.Material.Filled.Login" Loading="isLoggingIn" Disabled="isLoggingIn">Entrar</MudButton>
+        <MudTextField Label="Usuário" @bind-Value="login.Username" Variant="Variant.Outlined" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Person" Disabled="isLoggingIn" />
+        <MudTextField Label="Senha" InputType="InputType.Password" @bind-Value="login.Password" Variant="Variant.Outlined" Class="mt-3" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Lock" Disabled="isLoggingIn" />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="PerformLogin" Class="mt-4" FullWidth="true" StartIcon="@Icons.Material.Filled.Login" Loading="isLoggingIn" Disabled="isLoggingIn">@(isLoggingIn ? "Entrando..." : "Entrar")</MudButton>
 
 
         @if (!string.IsNullOrWhiteSpace(loginError))
@@ -40,16 +40,16 @@ else
                 <MudTextField Label="Senha" @bind-Value="form.Password" Variant="Variant.Outlined" Class="mt-3" />
 
                 <MudStack Row="true" Spacing="2" Class="mt-4">
-                    <MudButton Variant="Variant.Outlined" OnClick="Generate" StartIcon="@Icons.Material.Filled.AutoFixHigh" Disabled="isGenerating" Loading="isGenerating">Gerar automática</MudButton>
-                    <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="Save" StartIcon="@Icons.Material.Filled.Save" Disabled="isSaving" Loading="isSaving">Salvar</MudButton>
-                    <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => CopyPassword(form.Password))" StartIcon="@Icons.Material.Filled.ContentCopy" Disabled="isCopying">Copiar senha</MudButton>
+                    <MudButton Variant="Variant.Outlined" OnClick="Generate" StartIcon="@Icons.Material.Filled.AutoFixHigh" Disabled="isGenerating || isSaving" Loading="isGenerating">@(isGenerating ? "Gerando..." : "Gerar automática")</MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="Save" StartIcon="@Icons.Material.Filled.Save" Disabled="isSaving || isGenerating" Loading="isSaving">@(isSaving ? "Salvando..." : "Salvar")</MudButton>
+                    <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => CopyPassword(form.Password))" StartIcon="@Icons.Material.Filled.ContentCopy" Disabled="isCopying" Loading="isCopying">@(isCopying ? "Copiando..." : "Copiar senha")</MudButton>
                 </MudStack>
 
                 @if (!string.IsNullOrWhiteSpace(lastCreatedPassword))
                 {
                     <MudAlert Severity="Severity.Success" Variant="Variant.Outlined" Dense="true" Class="mt-4">
                         Senha criada com sucesso: <strong>@lastCreatedPassword</strong>
-                        <MudButton Size="Size.Small" Variant="Variant.Text" Class="ml-2" StartIcon="@Icons.Material.Filled.ContentCopy" OnClick="@(() => CopyPassword(lastCreatedPassword))">
+                        <MudButton Size="Size.Small" Variant="Variant.Text" Class="ml-2" StartIcon="@Icons.Material.Filled.ContentCopy" OnClick="@(() => CopyPassword(lastCreatedPassword))" Disabled="isCopying">
                             Copiar
                         </MudButton>
                     </MudAlert>
@@ -61,7 +61,7 @@ else
             <MudPaper Class="pa-5 modern-surface" Elevation="2">
                 <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-2">
                     <MudText Typo="Typo.h6">Senhas cadastradas</MudText>
-                    <MudButton Variant="Variant.Text" Color="Color.Secondary" OnClick="Reload" StartIcon="@Icons.Material.Filled.Refresh">Atualizar</MudButton>
+                    <MudButton Variant="Variant.Text" Color="Color.Secondary" OnClick="Reload" StartIcon="@Icons.Material.Filled.Refresh" Loading="isReloading" Disabled="isReloading">@(isReloading ? "Atualizando..." : "Atualizar")</MudButton>
                 </MudStack>
 
                 <MudTable Items="passwords" Hover="true" Dense="true">
@@ -103,6 +103,7 @@ else
     private bool isCopying;
     private bool isLoggingIn;
     private Guid? deletingPasswordId;
+    private bool isReloading;
 
     protected override async Task OnInitializedAsync()
     {
@@ -115,6 +116,13 @@ else
     private async Task PerformLogin()
     {
         loginError = null;
+
+        if (string.IsNullOrWhiteSpace(login.Username) || string.IsNullOrWhiteSpace(login.Password))
+        {
+            loginError = "Informe usuário e senha para continuar.";
+            return;
+        }
+
         try
         {
             isLoggingIn = true;
@@ -126,6 +134,11 @@ else
             }
 
             await Reload();
+            Snackbar.Add("Login realizado com sucesso.", Severity.Success);
+        }
+        catch
+        {
+            loginError = "Não foi possível realizar login agora. Tente novamente em instantes.";
         }
         finally
         {
@@ -224,6 +237,14 @@ else
 
     private async Task Reload()
     {
-        passwords = (await ApiClient.GetPasswordsAsync()).ToList();
+        try
+        {
+            isReloading = true;
+            passwords = (await ApiClient.GetPasswordsAsync()).ToList();
+        }
+        finally
+        {
+            isReloading = false;
+        }
     }
 }
