@@ -1,9 +1,9 @@
-name: Build Android APK (Internal)
+name: Build Android APK (Internal) on Tag 
 
 on:
   push:
-    branches:
-      - main  # troque se sua branch for outra
+    tags:
+      - 'v.*'  # troque se sua branch for outra
 
   workflow_dispatch:  # permite rodar manualmente
 
