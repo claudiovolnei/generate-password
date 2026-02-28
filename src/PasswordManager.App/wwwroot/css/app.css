@@ -3,12 +3,13 @@ html, body {
     background: radial-gradient(circle at top left, #1f245c 0%, #0f122a 45%, #090b1f 100%);
     color: #e9ecff;
     min-height: 100%;
+    margin: 0;
 }
 
 .page-container {
     max-width: 920px;
     margin: 0 auto;
-    padding: 24px;
+    padding: calc(24px + env(safe-area-inset-top, 0px)) 24px 24px;
 }
 
 .modern-surface {
@@ -22,6 +23,7 @@ html, body {
     border-bottom: 1px solid rgba(255,255,255,.08);
     background: rgba(5, 8, 28, 0.55) !important;
     backdrop-filter: blur(10px);
+    padding-top: env(safe-area-inset-top, 0px);
 }
 
 .login-card {

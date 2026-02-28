@@ -1,3 +1,4 @@
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using PasswordManager.App.Models;
 
@@ -13,7 +14,7 @@ public class ApiClient
         _authState = authState;
         _httpClient = new HttpClient
         {
-            BaseAddress = new Uri("http://password-manager.runasp.net")
+            BaseAddress = new Uri("https://password-manager.runasp.net")
         };
     }
 
@@ -26,8 +27,7 @@ public class ApiClient
         if (string.IsNullOrWhiteSpace(payload?.Token)) return false;
 
         _authState.SetToken(payload.Token);
-        _httpClient.DefaultRequestHeaders.Authorization =
-            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", payload.Token);
+        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", payload.Token);
 
         return true;
     }
@@ -56,6 +56,7 @@ public class ApiClient
 
         return await response.Content.ReadFromJsonAsync<PasswordEntry>();
     }
+
     public async Task DeletePasswordAsync(Guid id)
     {
         var response = await _httpClient.DeleteAsync($"/api/passwords/{id}");
