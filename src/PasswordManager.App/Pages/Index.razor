@@ -221,9 +221,9 @@ else
 
             await Reload();
         }
-        catch
+        catch(Exception ex)
         {
-            loginError = "Não foi possível realizar login agora. Tente novamente em instantes.";
+            loginError = $"Não foi possível realizar login agora. Tente novamente em instantes.{ex}";
         }
         finally
         {
