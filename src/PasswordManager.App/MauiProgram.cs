@@ -22,6 +22,7 @@ public static class MauiProgram
 
         builder.Services.AddSingleton<ApiClient>();
         builder.Services.AddSingleton<AuthState>();
+        builder.Services.AddSingleton<DeviceAuthService>();
 
 #if DEBUG
         builder.Services.AddBlazorWebViewDeveloperTools();
