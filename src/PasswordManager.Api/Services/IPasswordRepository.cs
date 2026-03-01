@@ -4,7 +4,7 @@ namespace PasswordManager.Api.Services;
 
 public interface IPasswordRepository
 {
-    IReadOnlyCollection<PasswordEntry> GetAll();
+    IReadOnlyCollection<PasswordEntry> GetAll(Guid userAccountId);
     PasswordEntry Add(PasswordEntry entry);
-    bool Delete(Guid id);
+    bool Delete(Guid id, Guid userAccountId);
 }

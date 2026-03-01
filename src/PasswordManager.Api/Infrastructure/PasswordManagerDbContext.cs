@@ -14,6 +14,8 @@ public class PasswordManagerDbContext(DbContextOptions<PasswordManagerDbContext>
         {
             entity.ToTable("PasswordEntries");
             entity.HasKey(item => item.Id);
+            entity.Property(item => item.UserAccountId)
+                .IsRequired();
             entity.Property(item => item.Description)
                 .HasMaxLength(200)
                 .IsRequired();
@@ -25,6 +27,13 @@ public class PasswordManagerDbContext(DbContextOptions<PasswordManagerDbContext>
                 .IsRequired();
             entity.Property(item => item.CreatedAtUtc)
                 .IsRequired();
+
+            entity.HasOne(item => item.UserAccount)
+                .WithMany()
+                .HasForeignKey(item => item.UserAccountId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(item => item.UserAccountId);
         });
 
         modelBuilder.Entity<UserAccount>(entity =>
