@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using PasswordManager.App.Models;
@@ -18,18 +19,45 @@ public class ApiClient
         };
     }
 
-    public async Task<bool> LoginAsync(LoginRequest request)
+    public async Task<LoginResult> LoginAsync(LoginRequest request)
     {
         var response = await _httpClient.PostAsJsonAsync("/api/auth/login", request);
-        if (!response.IsSuccessStatusCode) return false;
+        if (response.StatusCode == HttpStatusCode.PreconditionRequired)
+        {
+            return new LoginResult(false, true);
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            return new LoginResult(false, false, "Usuário ou senha inválidos.");
+        }
 
         var payload = await response.Content.ReadFromJsonAsync<LoginResponse>();
-        if (string.IsNullOrWhiteSpace(payload?.Token)) return false;
+        if (string.IsNullOrWhiteSpace(payload?.Token))
+        {
+            return new LoginResult(false, false, "Resposta inválida do servidor.");
+        }
 
         _authState.SetToken(payload.Token);
         _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", payload.Token);
 
-        return true;
+        return new LoginResult(true, payload.RequireMobileAuthentication);
+    }
+
+    public async Task<(bool IsSuccess, string? ErrorMessage)> RegisterAsync(RegisterUserRequest request)
+    {
+        var response = await _httpClient.PostAsJsonAsync("/api/auth/register", request);
+        if (response.IsSuccessStatusCode)
+        {
+            return (true, null);
+        }
+
+        if (response.StatusCode == HttpStatusCode.Conflict)
+        {
+            return (false, "Usuário já existe.");
+        }
+
+        return (false, "Não foi possível criar a conta agora.");
     }
 
     public async Task<IReadOnlyCollection<PasswordEntry>> GetPasswordsAsync()

@@ -151,13 +151,18 @@ app.MapPost("/api/auth/register", async (RegisterUserRequest request, PasswordMa
         Id = Guid.NewGuid(),
         Username = username,
         Password = hasher.Hash(request.Password),
+        RequireMobileAuthentication = request.RequireMobileAuthentication,
         CreatedAtUtc = DateTime.UtcNow
     };
 
     dbContext.UserAccounts.Add(userAccount);
     await dbContext.SaveChangesAsync();
 
-    return Results.Created($"/api/auth/users/{userAccount.Username}", new { username = userAccount.Username });
+    return Results.Created($"/api/auth/users/{userAccount.Username}", new
+    {
+        username = userAccount.Username,
+        requireMobileAuthentication = userAccount.RequireMobileAuthentication
+    });
 })
 .AllowAnonymous()
 .WithTags("Auth");
@@ -185,8 +190,13 @@ app.MapPost("/api/auth/login", async (LoginRequest request, JwtTokenService toke
         await dbContext.SaveChangesAsync();
     }
 
+    if (user.RequireMobileAuthentication && !request.MobileAuthenticationConfirmed)
+    {
+        return Results.StatusCode(StatusCodes.Status428PreconditionRequired);
+    }
+
     var token = tokenService.Generate(user.Username);
-    return Results.Ok(new { token });
+    return Results.Ok(new { token, requireMobileAuthentication = user.RequireMobileAuthentication });
 })
 .AllowAnonymous()
 .WithTags("Auth");

@@ -10,14 +10,24 @@
     <MudPaper Class="pa-8 mx-auto login-card modern-surface" MaxWidth="MaxWidth.Small" Elevation="4">
         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mb-2">
             <MudIcon Icon="@Icons.Material.Filled.Security" Color="Color.Primary" />
-            <MudText Typo="Typo.h5">Acesse o cofre</MudText>
+            <MudText Typo="Typo.h5">@((isCreatingAccount) ? "Criar conta" : "Acesse o cofre")</MudText>
         </MudStack>
-        <MudText Typo="Typo.body2" Class="mb-4 text-muted">Faça login para gerenciar suas senhas com segurança.</MudText>
+        <MudText Typo="Typo.body2" Class="mb-4 text-muted">@((isCreatingAccount) ? "Cadastre seu usuário e ative autenticação do celular." : "Faça login para gerenciar suas senhas com segurança.")</MudText>
 
         <MudTextField Label="Usuário" @bind-Value="login.Username" Variant="Variant.Outlined" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Person" Disabled="isLoggingIn" />
         <MudTextField Label="Senha" InputType="InputType.Password" @bind-Value="login.Password" Variant="Variant.Outlined" Class="mt-3" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Lock" Disabled="isLoggingIn" />
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="PerformLogin" Class="mt-4" FullWidth="true" StartIcon="@Icons.Material.Filled.Login" Loading="isLoggingIn" Disabled="isLoggingIn">@(isLoggingIn ? "Entrando..." : "Entrar")</MudButton>
 
+        @if (isCreatingAccount)
+        {
+            <MudCheckBox @bind-Value="register.RequireMobileAuthentication" Label="Exigir autenticação do celular (digital ou facial)" Class="mt-3" />
+            <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="Register" Class="mt-4" FullWidth="true" StartIcon="@Icons.Material.Filled.PersonAdd" Loading="isRegistering" Disabled="isRegistering">@(isRegistering ? "Criando conta..." : "Criar conta")</MudButton>
+            <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="ToggleAccountMode" Class="mt-2" FullWidth="true" Disabled="isRegistering">Já tenho conta</MudButton>
+        }
+        else
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="PerformLogin" Class="mt-4" FullWidth="true" StartIcon="@Icons.Material.Filled.Login" Loading="isLoggingIn" Disabled="isLoggingIn">@(isLoggingIn ? "Entrando..." : "Entrar")</MudButton>
+            <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="ToggleAccountMode" Class="mt-2" FullWidth="true" Disabled="isLoggingIn">Criar conta</MudButton>
+        }
 
         @if (!string.IsNullOrWhiteSpace(loginError))
         {
@@ -109,7 +119,9 @@ else
     private readonly HashSet<Guid> visiblePasswordIds = [];
 
     private LoginRequest login = new();
+    private RegisterUserRequest register = new();
     private string? loginError;
+    private bool isCreatingAccount;
 
     private CreatePasswordRequest form = new();
     private List<PasswordEntry> passwords = [];
@@ -118,6 +130,7 @@ else
     private bool isSaving;
     private bool isCopying;
     private bool isLoggingIn;
+    private bool isRegistering;
     private Guid? deletingPasswordId;
     private bool isReloading;
 
@@ -126,6 +139,44 @@ else
         if (AuthState.IsAuthenticated)
         {
             await Reload();
+        }
+    }
+
+    private void ToggleAccountMode()
+    {
+        loginError = null;
+        isCreatingAccount = !isCreatingAccount;
+    }
+
+    private async Task Register()
+    {
+        loginError = null;
+
+        if (string.IsNullOrWhiteSpace(login.Username) || string.IsNullOrWhiteSpace(login.Password))
+        {
+            loginError = "Informe usuário e senha para criar a conta.";
+            return;
+        }
+
+        try
+        {
+            isRegistering = true;
+            register.Username = login.Username;
+            register.Password = login.Password;
+
+            var result = await ApiClient.RegisterAsync(register);
+            if (!result.IsSuccess)
+            {
+                loginError = result.ErrorMessage;
+                return;
+            }
+
+            Snackbar.Add("Conta criada com sucesso. Faça login para entrar.", Severity.Success);
+            isCreatingAccount = false;
+        }
+        finally
+        {
+            isRegistering = false;
         }
     }
 
@@ -142,17 +193,29 @@ else
         try
         {
             isLoggingIn = true;
-            var success = await ApiClient.LoginAsync(login);
-            if (!success)
-            {
-                loginError = "Usuário ou senha inválidos.";
-                return;
-            }
+            login.MobileAuthenticationConfirmed = false;
 
-            if (RequiresBiometric() && !await DeviceAuthService.AuthenticateAsync())
+            var firstAttempt = await ApiClient.LoginAsync(login);
+            if (firstAttempt.RequiresMobileAuthentication)
             {
-                AuthState.Logout();
-                loginError = "Autenticação por digital não confirmada.";
+                var biometricConfirmed = await DeviceAuthService.AuthenticateAsync();
+                if (!biometricConfirmed)
+                {
+                    loginError = "Autenticação por digital ou facial não confirmada.";
+                    return;
+                }
+
+                login.MobileAuthenticationConfirmed = true;
+                var secondAttempt = await ApiClient.LoginAsync(login);
+                if (!secondAttempt.IsSuccess)
+                {
+                    loginError = secondAttempt.ErrorMessage ?? "Não foi possível validar seu acesso.";
+                    return;
+                }
+            }
+            else if (!firstAttempt.IsSuccess)
+            {
+                loginError = firstAttempt.ErrorMessage;
                 return;
             }
 
@@ -167,8 +230,6 @@ else
             isLoggingIn = false;
         }
     }
-
-    private static bool RequiresBiometric() => OperatingSystem.IsAndroid() || OperatingSystem.IsIOS();
 
     private async Task Generate()
     {
