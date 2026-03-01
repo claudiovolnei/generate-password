@@ -1,4 +1,5 @@
 using System.Net.Http.Headers;
+using System.Security.Claims;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -7,9 +8,27 @@ using PasswordManager.Api.Infrastructure;
 using PasswordManager.Api.Models;
 using PasswordManager.Api.Security;
 using PasswordManager.Api.Services;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Host.UseSerilog((context, loggerConfiguration) =>
+{
+    loggerConfiguration
+        .ReadFrom.Configuration(context.Configuration)
+        .Enrich.FromLogContext()
+        .WriteTo.Console();
+
+    var seqServerUrl = context.Configuration["Seq:ServerUrl"];
+    if (!string.IsNullOrWhiteSpace(seqServerUrl))
+    {
+        loggerConfiguration.WriteTo.Seq(
+            seqServerUrl,
+            apiKey: context.Configuration["Seq:ApiKey"]);
+    }
+});
+
+builder.Services.AddHttpClient("SeqProxy");
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"));
 var jwtSettings = builder.Configuration.GetSection("Jwt").Get<JwtSettings>() ?? new JwtSettings();
 
@@ -81,6 +100,8 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+app.UseSerilogRequestLogging();
+
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<PasswordManagerDbContext>();
@@ -130,6 +151,57 @@ app.UseSwaggerUI(options =>
 app.UseCors("App");
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.Map("/seq/{**path}", async (HttpContext context, IHttpClientFactory httpClientFactory, IConfiguration configuration) =>
+{
+    var seqServerUrl = configuration["Seq:ServerUrl"];
+    if (string.IsNullOrWhiteSpace(seqServerUrl))
+    {
+        context.Response.StatusCode = StatusCodes.Status404NotFound;
+        await context.Response.WriteAsync("Seq não configurado. Defina Seq:ServerUrl.");
+        return;
+    }
+
+    var path = context.Request.RouteValues["path"]?.ToString() ?? string.Empty;
+    var targetUri = new Uri($"{seqServerUrl.TrimEnd('/')}/{path}{context.Request.QueryString}");
+
+    using var requestMessage = new HttpRequestMessage(new HttpMethod(context.Request.Method), targetUri);
+
+    foreach (var header in context.Request.Headers)
+    {
+        if (!requestMessage.Headers.TryAddWithoutValidation(header.Key, header.Value.ToArray()))
+        {
+            requestMessage.Content ??= new StreamContent(context.Request.Body);
+            requestMessage.Content.Headers.TryAddWithoutValidation(header.Key, header.Value.ToArray());
+        }
+    }
+
+    if (context.Request.ContentLength > 0 || context.Request.Headers.ContainsKey("Transfer-Encoding"))
+    {
+        requestMessage.Content ??= new StreamContent(context.Request.Body);
+    }
+
+    var client = httpClientFactory.CreateClient("SeqProxy");
+    using var responseMessage = await client.SendAsync(
+        requestMessage,
+        HttpCompletionOption.ResponseHeadersRead,
+        context.RequestAborted);
+
+    context.Response.StatusCode = (int)responseMessage.StatusCode;
+
+    foreach (var header in responseMessage.Headers)
+    {
+        context.Response.Headers[header.Key] = header.Value.ToArray();
+    }
+
+    foreach (var header in responseMessage.Content.Headers)
+    {
+        context.Response.Headers[header.Key] = header.Value.ToArray();
+    }
+
+    context.Response.Headers.Remove("transfer-encoding");
+    await responseMessage.Content.CopyToAsync(context.Response.Body);
+});
 
 app.MapPost("/api/auth/register", async (RegisterUserRequest request, PasswordManagerDbContext dbContext, PasswordHasherService hasher) =>
 {
@@ -195,7 +267,7 @@ app.MapPost("/api/auth/login", async (LoginRequest request, JwtTokenService toke
         return Results.StatusCode(StatusCodes.Status428PreconditionRequired);
     }
 
-    var token = tokenService.Generate(user.Username);
+    var token = tokenService.Generate(user.Id, user.Username);
     return Results.Ok(new { token, requireMobileAuthentication = user.RequireMobileAuthentication });
 })
 .AllowAnonymous()
@@ -205,7 +277,15 @@ var passwords = app.MapGroup("/api/passwords")
     .WithTags("Passwords")
     .RequireAuthorization();
 
-passwords.MapGet("/", (IPasswordRepository repository) => Results.Ok(repository.GetAll()));
+passwords.MapGet("/", (ClaimsPrincipal user, IPasswordRepository repository) =>
+{
+    if (!TryGetUserId(user, out var userId))
+    {
+        return Results.Unauthorized();
+    }
+
+    return Results.Ok(repository.GetAll(userId));
+});
 
 passwords.MapPost("/generate", (GeneratePasswordRequest request, IPasswordGenerator generator) =>
 {
@@ -213,14 +293,20 @@ passwords.MapPost("/generate", (GeneratePasswordRequest request, IPasswordGenera
     return Results.Ok(new { password = generated });
 });
 
-passwords.MapPost("/", (CreatePasswordRequest request, IPasswordRepository repository, IPasswordGenerator generator) =>
+passwords.MapPost("/", (ClaimsPrincipal user, CreatePasswordRequest request, IPasswordRepository repository, IPasswordGenerator generator) =>
 {
+    if (!TryGetUserId(user, out var userId))
+    {
+        return Results.Unauthorized();
+    }
+
     var secret = string.IsNullOrWhiteSpace(request.Password)
         ? generator.Generate(new GeneratePasswordRequest())
         : request.Password;
 
     var entry = repository.Add(new PasswordEntry
     {
+        UserAccountId = userId,
         Description = request.Description,
         Username = request.Username,
         Secret = secret,
@@ -230,11 +316,21 @@ passwords.MapPost("/", (CreatePasswordRequest request, IPasswordRepository repos
     return Results.Created($"/api/passwords/{entry.Id}", entry);
 });
 
-passwords.MapDelete("/{id:guid}", (Guid id, IPasswordRepository repository) =>
+passwords.MapDelete("/{id:guid}", (ClaimsPrincipal user, Guid id, IPasswordRepository repository) =>
 {
-    var deleted = repository.Delete(id);
+    if (!TryGetUserId(user, out var userId))
+    {
+        return Results.Unauthorized();
+    }
+
+    var deleted = repository.Delete(id, userId);
     return deleted ? Results.NoContent() : Results.NotFound();
 });
 
-
 app.Run();
+
+static bool TryGetUserId(ClaimsPrincipal user, out Guid userId)
+{
+    var claimValue = user.FindFirstValue(ClaimTypes.NameIdentifier);
+    return Guid.TryParse(claimValue, out userId);
+}

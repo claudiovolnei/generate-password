@@ -44,7 +44,12 @@ namespace PasswordManager.Api.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<Guid>("UserAccountId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("UserAccountId");
 
                     b.ToTable("PasswordEntries", (string)null);
                 });
@@ -79,6 +84,17 @@ namespace PasswordManager.Api.Migrations
                         .IsUnique();
 
                     b.ToTable("UserAccounts", (string)null);
+                });
+
+            modelBuilder.Entity("PasswordManager.Api.Models.PasswordEntry", b =>
+                {
+                    b.HasOne("PasswordManager.Api.Models.UserAccount", "UserAccount")
+                        .WithMany()
+                        .HasForeignKey("UserAccountId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("UserAccount");
                 });
 #pragma warning restore 612, 618
         }

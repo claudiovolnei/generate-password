@@ -91,6 +91,20 @@ Swagger:
 
 - `https://localhost:7096/swagger`
 
+
+### 1.1) Observabilidade com Serilog + Seq
+
+A API está configurada para enviar logs estruturados para o console e para o Seq.
+
+Instale/execute o Seq localmente (sem container) no endereço padrão (`http://localhost:5341`).
+
+A API também expõe um proxy para o Seq em:
+
+- `http://localhost:5096/seq`
+- `https://localhost:7096/seq`
+
+> Caso seu Seq rode em outro endereço, ajuste `Seq:ServerUrl` na configuração da API.
+
 ### 2) App MAUI Blazor
 
 Em outro terminal:

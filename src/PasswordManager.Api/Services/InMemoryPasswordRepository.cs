@@ -11,6 +11,7 @@ public class InMemoryPasswordRepository : IPasswordRepository
     {
         var seed = new PasswordEntry
         {
+            UserAccountId = Guid.Empty,
             Description = "Conta de exemplo",
             Username = "admin@empresa.com",
             Secret = "Exemplo@1234"
@@ -18,8 +19,11 @@ public class InMemoryPasswordRepository : IPasswordRepository
         _entries.TryAdd(seed.Id, seed);
     }
 
-    public IReadOnlyCollection<PasswordEntry> GetAll() =>
-        _entries.Values.OrderByDescending(item => item.CreatedAtUtc).ToList();
+    public IReadOnlyCollection<PasswordEntry> GetAll(Guid userAccountId) =>
+        _entries.Values
+            .Where(item => item.UserAccountId == userAccountId)
+            .OrderByDescending(item => item.CreatedAtUtc)
+            .ToList();
 
     public PasswordEntry Add(PasswordEntry entry)
     {
@@ -27,6 +31,13 @@ public class InMemoryPasswordRepository : IPasswordRepository
         return entry;
     }
 
-    public bool Delete(Guid id) =>
-        _entries.TryRemove(id, out _);
+    public bool Delete(Guid id, Guid userAccountId)
+    {
+        if (!_entries.TryGetValue(id, out var entry) || entry.UserAccountId != userAccountId)
+        {
+            return false;
+        }
+
+        return _entries.TryRemove(id, out _);
+    }
 }
