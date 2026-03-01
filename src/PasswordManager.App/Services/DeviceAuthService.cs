@@ -5,7 +5,7 @@ namespace PasswordManager.App.Services;
 
 public sealed class DeviceAuthService
 {
-    public async Task<bool> AuthenticateAsync()
+    public async Task<bool> AuthenticateAsync(string title = "Validação biométrica", string reason = "Use sua digital ou reconhecimento facial para acessar")
     {
 #if ANDROID || IOS || MACCATALYST
         var isAvailable = await CrossFingerprint.Current.IsAvailableAsync(true);
@@ -14,7 +14,7 @@ public sealed class DeviceAuthService
             return false;
         }
 
-        var request = new AuthenticationRequestConfiguration("Validação biométrica", "Use sua digital para acessar o cofre")
+        var request = new AuthenticationRequestConfiguration(title, reason)
         {
             CancelTitle = "Cancelar",
             AllowAlternativeAuthentication = true

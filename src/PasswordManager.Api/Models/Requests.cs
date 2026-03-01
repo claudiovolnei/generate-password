@@ -1,8 +1,8 @@
 namespace PasswordManager.Api.Models;
 
-public record LoginRequest(string Username, string Password);
+public record LoginRequest(string Username, string Password, bool MobileAuthenticationConfirmed = false);
 
-public record RegisterUserRequest(string Username, string Password);
+public record RegisterUserRequest(string Username, string Password, bool RequireMobileAuthentication = true);
 
 public record CreatePasswordRequest(string Description, string Username, string? Password);
 

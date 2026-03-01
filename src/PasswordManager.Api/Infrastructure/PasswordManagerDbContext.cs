@@ -37,6 +37,9 @@ public class PasswordManagerDbContext(DbContextOptions<PasswordManagerDbContext>
             entity.Property(item => item.Password)
                 .HasMaxLength(500)
                 .IsRequired();
+            entity.Property(item => item.RequireMobileAuthentication)
+                .HasDefaultValue(true)
+                .IsRequired();
             entity.Property(item => item.CreatedAtUtc)
                 .IsRequired();
             entity.HasIndex(item => item.Username)
