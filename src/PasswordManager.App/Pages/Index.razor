@@ -1,6 +1,7 @@
 @page "/"
 @inject ApiClient ApiClient
 @inject AuthState AuthState
+@inject DeviceAuthService DeviceAuthService
 @inject IJSRuntime JsRuntime
 @inject ISnackbar Snackbar
 
@@ -35,14 +36,14 @@ else
                 </MudStack>
                 <MudText Typo="Typo.body2" Class="mb-4 text-muted">Crie e salve uma credencial com aparência profissional.</MudText>
 
-                <MudTextField Label="Descrição" @bind-Value="form.Description" Variant="Variant.Outlined" />
-                <MudTextField Label="Usuário/Login" @bind-Value="form.Username" Variant="Variant.Outlined" Class="mt-3" />
-                <MudTextField Label="Senha" @bind-Value="form.Password" Variant="Variant.Outlined" Class="mt-3" />
+                <MudTextField Label="Descrição" @bind-Value="form.Description" Variant="Variant.Outlined" Disabled="isSaving" />
+                <MudTextField Label="Usuário/Login" @bind-Value="form.Username" Variant="Variant.Outlined" Class="mt-3" Disabled="isSaving" />
+                <MudTextField Label="Senha" @bind-Value="form.Password" Variant="Variant.Outlined" Class="mt-3" Disabled="isSaving" />
 
-                <MudStack Row="true" Spacing="2" Class="mt-4">
+                <MudStack Row="true" Spacing="2" Class="mt-4" Wrap="Wrap.Wrap">
                     <MudButton Variant="Variant.Outlined" OnClick="Generate" StartIcon="@Icons.Material.Filled.AutoFixHigh" Disabled="isGenerating || isSaving" Loading="isGenerating">@(isGenerating ? "Gerando..." : "Gerar automática")</MudButton>
                     <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="Save" StartIcon="@Icons.Material.Filled.Save" Disabled="isSaving || isGenerating" Loading="isSaving">@(isSaving ? "Salvando..." : "Salvar")</MudButton>
-                    <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => CopyPassword(form.Password))" StartIcon="@Icons.Material.Filled.ContentCopy" Disabled="isCopying" Loading="isCopying">@(isCopying ? "Copiando..." : "Copiar senha")</MudButton>
+                    <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => CopyPassword(form.Password))" StartIcon="@Icons.Material.Filled.ContentCopy" Disabled="isCopying || isSaving" Loading="isCopying">@(isCopying ? "Copiando..." : "Copiar senha")</MudButton>
                 </MudStack>
 
                 @if (!string.IsNullOrWhiteSpace(lastCreatedPassword))
@@ -64,27 +65,40 @@ else
                     <MudButton Variant="Variant.Text" Color="Color.Secondary" OnClick="Reload" StartIcon="@Icons.Material.Filled.Refresh" Loading="isReloading" Disabled="isReloading">@(isReloading ? "Atualizando..." : "Atualizar")</MudButton>
                 </MudStack>
 
-                <MudTable Items="passwords" Hover="true" Dense="true">
+                <MudTable Items="passwords" Hover="true" Dense="true" Bordered="true" Striped="true" Breakpoint="Breakpoint.Sm" Class="professional-table">
                     <HeaderContent>
                         <MudTh>Descrição</MudTh>
                         <MudTh>Usuário</MudTh>
                         <MudTh>Senha</MudTh>
                         <MudTh>Criada em</MudTh>
-                        <MudTh>Ações</MudTh>
+                        <MudTh Class="text-right">Ações</MudTh>
                     </HeaderContent>
                     <RowTemplate>
-                        <MudTd DataLabel="Descrição">@context.Description</MudTd>
-                        <MudTd DataLabel="Usuário">@context.Username</MudTd>
-                        <MudTd DataLabel="Senha">@context.Secret</MudTd>
-                        <MudTd DataLabel="Criada em">@context.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</MudTd>
-                        <MudTd DataLabel="Ações">
-                            <MudStack Row="true" Spacing="1">
-                                <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" Color="Color.Primary" Size="Size.Small" OnClick="@(() => CopyPassword(context.Secret))" aria-label="Copiar senha" />
-                                <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Error" StartIcon="@Icons.Material.Filled.Delete" OnClick="@(() => DeletePassword(context.Id))" Loading="deletingPasswordId == context.Id" Disabled="deletingPasswordId == context.Id">
+                        <MudTd DataLabel="Descrição">
+                            <MudText Typo="Typo.body2">@context.Description</MudText>
+                        </MudTd>
+                        <MudTd DataLabel="Usuário">
+                            <MudText Typo="Typo.body2">@context.Username</MudText>
+                        </MudTd>
+                        <MudTd DataLabel="Senha">
+                            <MudChip Variant="Variant.Outlined" Size="Size.Small" Color="Color.Primary">@DisplayPassword(context)</MudChip>
+                        </MudTd>
+                        <MudTd DataLabel="Criada em">
+                            <MudText Typo="Typo.caption">@context.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</MudText>
+                        </MudTd>
+                        <MudTd DataLabel="Ações" Class="text-right">
+                            <MudStack Row="true" Spacing="1" Justify="Justify.FlexEnd">
+                                <MudIconButton Icon="@GetVisibilityIcon(context.Id)" Color="Color.Default" Size="Size.Small" OnClick="@(() => ToggleVisibility(context.Id))" aria-label="Mostrar ou ocultar senha" />
+                                <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" Color="Color.Primary" Size="Size.Small" OnClick="@(() => CopyPassword(context.Secret))" aria-label="Copiar senha" Disabled="isCopying" />
+                                <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Error" StartIcon="@Icons.Material.Filled.Delete" OnClick="@(() => DeletePassword(context.Id))" Loading="deletingPasswordId == context.Id" Disabled="deletingPasswordId == context.Id || isSaving">
+                                    Excluir
                                 </MudButton>
                             </MudStack>
                         </MudTd>
                     </RowTemplate>
+                    <NoRecordsContent>
+                        <MudText Typo="Typo.body2" Class="py-2">Nenhuma senha cadastrada até o momento.</MudText>
+                    </NoRecordsContent>
                 </MudTable>
             </MudPaper>
         </MudItem>
@@ -92,6 +106,8 @@ else
 }
 
 @code {
+    private readonly HashSet<Guid> visiblePasswordIds = [];
+
     private LoginRequest login = new();
     private string? loginError;
 
@@ -133,18 +149,26 @@ else
                 return;
             }
 
+            if (RequiresBiometric() && !await DeviceAuthService.AuthenticateAsync())
+            {
+                AuthState.Logout();
+                loginError = "Autenticação por digital não confirmada.";
+                return;
+            }
+
             await Reload();
-            Snackbar.Add("Login realizado com sucesso.", Severity.Success);
         }
-        catch(Exception ex)
+        catch
         {
-            loginError = $"Não foi possível realizar login agora. Tente novamente em instantes.{ex}";
+            loginError = "Não foi possível realizar login agora. Tente novamente em instantes.";
         }
         finally
         {
             isLoggingIn = false;
         }
     }
+
+    private static bool RequiresBiometric() => OperatingSystem.IsAndroid() || OperatingSystem.IsIOS();
 
     private async Task Generate()
     {
@@ -153,11 +177,6 @@ else
             isGenerating = true;
             var generated = await ApiClient.GeneratePasswordAsync(new GeneratePasswordRequest());
             form = form with { Password = generated };
-            Snackbar.Add("Senha gerada com sucesso.", Severity.Success);
-        }
-        catch
-        {
-            Snackbar.Add("Não foi possível gerar a senha no momento.", Severity.Error);
         }
         finally
         {
@@ -215,7 +234,6 @@ else
     {
         if (string.IsNullOrWhiteSpace(password))
         {
-            Snackbar.Add("Não há senha para copiar.", Severity.Warning);
             return;
         }
 
@@ -223,11 +241,6 @@ else
         {
             isCopying = true;
             await JsRuntime.InvokeVoidAsync("appClipboard.copyText", password);
-            Snackbar.Add("Senha copiada para a área de transferência.", Severity.Success);
-        }
-        catch
-        {
-            Snackbar.Add("Não foi possível copiar a senha.", Severity.Error);
         }
         finally
         {
@@ -235,12 +248,28 @@ else
         }
     }
 
+    private void ToggleVisibility(Guid passwordId)
+    {
+        if (!visiblePasswordIds.Add(passwordId))
+        {
+            visiblePasswordIds.Remove(passwordId);
+        }
+    }
+
+    private string DisplayPassword(PasswordEntry entry) => visiblePasswordIds.Contains(entry.Id)
+        ? entry.Secret
+        : "••••••••";
+
+    private string GetVisibilityIcon(Guid passwordId) => visiblePasswordIds.Contains(passwordId)
+        ? Icons.Material.Filled.VisibilityOff
+        : Icons.Material.Filled.Visibility;
+
     private async Task Reload()
     {
         try
         {
             isReloading = true;
-            passwords = (await ApiClient.GetPasswordsAsync()).ToList();
+            passwords = (await ApiClient.GetPasswordsAsync()).OrderByDescending(x => x.CreatedAtUtc).ToList();
         }
         finally
         {
