@@ -81,7 +81,7 @@ else
                             <MudText Typo="Typo.body2">@context.Username</MudText>
                         </MudTd>
                         <MudTd DataLabel="Senha">
-                            <MudChip Variant="Variant.Outlined" Size="Size.Small" Color="Color.Primary">@DisplayPassword(context)</MudChip>
+                            <MudChip T="string" Variant="Variant.Outlined" Size="Size.Small" Color="Color.Primary">@DisplayPassword(context)</MudChip>
                         </MudTd>
                         <MudTd DataLabel="Criada em">
                             <MudText Typo="Typo.caption">@context.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</MudText>
