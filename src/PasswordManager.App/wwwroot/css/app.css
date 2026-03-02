@@ -34,18 +34,22 @@ html, body {
     color: rgba(233, 236, 255, 0.72);
 }
 
-.professional-table .mud-table-container {
+.professional-table {
     border-radius: 12px;
 }
 
-.professional-table .mud-table-head .mud-table-cell {
-    font-weight: 600;
-    letter-spacing: 0.02em;
-    text-transform: uppercase;
-    font-size: .72rem;
-    color: rgba(233, 236, 255, 0.82);
+.password-box {
+    background-color: var(--mud-palette-background-grey);
+    border-radius: 8px;
+    max-width: 200px;
+    overflow: hidden;
 }
 
-.professional-table .mud-table-body .mud-table-row:hover {
-    background-color: rgba(255, 255, 255, 0.03);
+.password-text {
+    font-family: monospace;
+    letter-spacing: 1px;
+}
+
+.search-field {
+    width: 250px;
 }
