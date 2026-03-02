@@ -237,7 +237,7 @@ passwords.MapPost("/generate", (GeneratePasswordRequest request, IPasswordGenera
     return Results.Ok(new { password = generated });
 });
 
-passwords.MapPost("/", (ClaimsPrincipal user, CreatePasswordRequest request, IPasswordRepository repository, IPasswordGenerator generator, SecretMaskingService secretMaskingService) =>
+passwords.MapPost("/", (ClaimsPrincipal user, CreatePasswordRequest request, IPasswordRepository repository, IPasswordGenerator generator) =>
 {
     if (!TryGetUserId(user, out var userId))
     {
@@ -253,7 +253,7 @@ passwords.MapPost("/", (ClaimsPrincipal user, CreatePasswordRequest request, IPa
         UserAccountId = userId,
         Description = request.Description,
         Username = request.Username,
-        Secret = secretMaskingService.Mask(secret),
+        Secret = secret,
         CreatedAtUtc = DateTime.UtcNow
     });
 
