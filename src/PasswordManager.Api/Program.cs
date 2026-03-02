@@ -1,6 +1,4 @@
-using System.Net.Http.Headers;
-using System.Security.Claims;
-using System.Text;
+using ElmahCore.Mvc;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -9,31 +7,27 @@ using PasswordManager.Api.Models;
 using PasswordManager.Api.Security;
 using PasswordManager.Api.Services;
 using Serilog;
+using System.Net.Http.Headers;
+using System.Security.Claims;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Host.UseSerilog((context, loggerConfiguration) =>
-{
-    loggerConfiguration
-        .ReadFrom.Configuration(context.Configuration)
-        .Enrich.FromLogContext()
-        .WriteTo.Console();
+// Configura Serilog
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Information()
+    .Enrich.FromLogContext()
+    .WriteTo.File("logs/log.txt", rollingInterval: RollingInterval.Day)
+    .CreateLogger();
 
-    var seqServerUrl = context.Configuration["Seq:ServerUrl"];
-    if (!string.IsNullOrWhiteSpace(seqServerUrl))
-    {
-        loggerConfiguration.WriteTo.Seq(
-            seqServerUrl,
-            apiKey: context.Configuration["Seq:ApiKey"]);
-    }
-});
+builder.Services.AddElmah();
 
-builder.Services.AddHttpClient("SeqProxy");
+
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"));
 var jwtSettings = builder.Configuration.GetSection("Jwt").Get<JwtSettings>() ?? new JwtSettings();
 
-var swaggerUsername = builder.Configuration["SwaggerAuth:Username"] ?? "swagger";
-var swaggerPassword = builder.Configuration["SwaggerAuth:Password"] ?? "Swagger@123";
+var swaggerUsername = builder.Configuration["SwaggerAuth:Username"] ?? throw new ArgumentNullException("SwaggerAuth:Username não pode ser null.");
+var swaggerPassword = builder.Configuration["SwaggerAuth:Password"] ?? throw new ArgumentNullException("SwaggerAuth:Password não pode ser null."); ;
 
 builder.Services.AddDataProtection();
 builder.Services.AddDbContext<PasswordManagerDbContext>(options =>
@@ -100,7 +94,7 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-app.UseSerilogRequestLogging();
+app.UseElmah();
 
 using (var scope = app.Services.CreateScope())
 {
@@ -152,56 +146,6 @@ app.UseCors("App");
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.Map("/seq/{**path}", async (HttpContext context, IHttpClientFactory httpClientFactory, IConfiguration configuration) =>
-{
-    var seqServerUrl = configuration["Seq:ServerUrl"];
-    if (string.IsNullOrWhiteSpace(seqServerUrl))
-    {
-        context.Response.StatusCode = StatusCodes.Status404NotFound;
-        await context.Response.WriteAsync("Seq não configurado. Defina Seq:ServerUrl.");
-        return;
-    }
-
-    var path = context.Request.RouteValues["path"]?.ToString() ?? string.Empty;
-    var targetUri = new Uri($"{seqServerUrl.TrimEnd('/')}/{path}{context.Request.QueryString}");
-
-    using var requestMessage = new HttpRequestMessage(new HttpMethod(context.Request.Method), targetUri);
-
-    foreach (var header in context.Request.Headers)
-    {
-        if (!requestMessage.Headers.TryAddWithoutValidation(header.Key, header.Value.ToArray()))
-        {
-            requestMessage.Content ??= new StreamContent(context.Request.Body);
-            requestMessage.Content.Headers.TryAddWithoutValidation(header.Key, header.Value.ToArray());
-        }
-    }
-
-    if (context.Request.ContentLength > 0 || context.Request.Headers.ContainsKey("Transfer-Encoding"))
-    {
-        requestMessage.Content ??= new StreamContent(context.Request.Body);
-    }
-
-    var client = httpClientFactory.CreateClient("SeqProxy");
-    using var responseMessage = await client.SendAsync(
-        requestMessage,
-        HttpCompletionOption.ResponseHeadersRead,
-        context.RequestAborted);
-
-    context.Response.StatusCode = (int)responseMessage.StatusCode;
-
-    foreach (var header in responseMessage.Headers)
-    {
-        context.Response.Headers[header.Key] = header.Value.ToArray();
-    }
-
-    foreach (var header in responseMessage.Content.Headers)
-    {
-        context.Response.Headers[header.Key] = header.Value.ToArray();
-    }
-
-    context.Response.Headers.Remove("transfer-encoding");
-    await responseMessage.Content.CopyToAsync(context.Response.Body);
-});
 
 app.MapPost("/api/auth/register", async (RegisterUserRequest request, PasswordManagerDbContext dbContext, PasswordHasherService hasher) =>
 {
