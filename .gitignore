@@ -71,7 +71,6 @@ coverage*.xml
 # Publish
 publish/
 *.Publish.xml
-*.pubxml
 *.publishproj
 
 # Windows
@@ -115,4 +114,3 @@ $RECYCLE.BIN/
 
 #Plataforms
 *.Platforms
-/src/PasswordManager.Api/appsettings.json
