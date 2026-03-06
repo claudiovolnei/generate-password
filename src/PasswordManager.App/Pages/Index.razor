@@ -117,8 +117,8 @@ else
                                     <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Start" Wrap="Wrap.Wrap" Spacing="2">
                                         <MudStack Spacing="0" Class="password-meta">
                                             <MudText Typo="Typo.body1" Class="fw-500">@password.Description</MudText>
-                                            <MudText Typo="Typo.body2" Class="text-muted">@password.Username</MudText>
-                                            <MudText Typo="Typo.caption" Class="text-muted">Criada em @password.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</MudText>
+                                            <MudText Typo="Typo.body2" Class="username-text">@FormatUsername(password.Username)</MudText>
+                                            <MudText Typo="Typo.caption" Class="created-at-text">Criada em @password.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</MudText>
                                         </MudStack>
 
                                         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Wrap="Wrap.Wrap">
@@ -427,6 +427,17 @@ else
         {
             visiblePasswordIds.Remove(passwordId);
         }
+    }
+
+
+    private static string FormatUsername(string? username)
+    {
+        if (string.IsNullOrWhiteSpace(username))
+        {
+            return "Usuário não informado";
+        }
+
+        return username.Trim();
     }
 
     private string DisplayPassword(PasswordEntry entry) => visiblePasswordIds.Contains(entry.Id)
