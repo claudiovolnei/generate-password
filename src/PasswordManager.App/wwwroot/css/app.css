@@ -80,10 +80,10 @@ html, body {
 
 
 .username-text {
-    color: rgba(233, 236, 255, 0.92);
+    color: var(--mud-palette-text-primary) !important;
     font-weight: 600;
 }
 
 .created-at-text {
-    color: rgba(233, 236, 255, 0.82);
+    color: var(--mud-palette-text-secondary) !important;
 }
