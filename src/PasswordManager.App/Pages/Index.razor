@@ -86,91 +86,80 @@ else
                                   Dense="true" />
                 </MudStack>
 
-                <MudTable Items="filteredPasswords"
-                          Hover="true"
-                          Dense="false"
-                          Elevation="0"
-                          Breakpoint="Breakpoint.Md"
-                          Bordered="false"
-                          Striped="false"
-                          RowsPerPage="10"
-                          Filterable="false"
-                          SortLabel="Ordenar">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-3" Wrap="Wrap.Wrap">
+                    <MudSelect T="SortOption" Label="Ordenar por" Value="selectedSort" ValueChanged="OnSortChanged" Variant="Variant.Outlined" Dense="true" Class="sort-field" Disabled="isReloading">
+                        <MudSelectItem Value="SortOption.Recentes">Mais recentes</MudSelectItem>
+                        <MudSelectItem Value="SortOption.Descricao">Descrição (A-Z)</MudSelectItem>
+                        <MudSelectItem Value="SortOption.Usuario">Usuário (A-Z)</MudSelectItem>
+                        <MudSelectItem Value="SortOption.Antigas">Mais antigas</MudSelectItem>
+                    </MudSelect>
 
-                    <HeaderContent>
-                        <MudTh><MudTableSortLabel SortBy="new Func<PasswordEntry, object>(x => x.Description)">Descrição</MudTableSortLabel></MudTh>
-                        <MudTh><MudTableSortLabel SortBy="new Func<PasswordEntry, object>(x => x.Username)">Usuário</MudTableSortLabel></MudTh>
-                        <MudTh>Senha</MudTh>
-                        <MudTh><MudTableSortLabel SortBy="new Func<PasswordEntry, object>(x => x.CreatedAtUtc)">Criada em</MudTableSortLabel></MudTh>
-                        <MudTh Class="text-right">Ações</MudTh>
-                    </HeaderContent>
+                    <MudSelect T="int" Label="Itens por página" Value="pageSize" ValueChanged="OnPageSizeChanged" Variant="Variant.Outlined" Dense="true" Class="page-size-field" Disabled="isReloading">
+                        <MudSelectItem Value="5">5</MudSelectItem>
+                        <MudSelectItem Value="10">10</MudSelectItem>
+                        <MudSelectItem Value="20">20</MudSelectItem>
+                    </MudSelect>
+                </MudStack>
 
-                    <RowTemplate>
-                        <MudTd DataLabel="Descrição">
-                            <MudText Typo="Typo.body1" Class="fw-500">@context.Description</MudText>
-                        </MudTd>
+                @if (!pagedPasswords.Any())
+                {
+                    <MudText Typo="Typo.body2" Class="pa-4 text-center">
+                        Nenhuma senha cadastrada ainda.
+                    </MudText>
+                }
+                else
+                {
+                    <MudList Class="password-list">
+                        @foreach (var password in pagedPasswords)
+                        {
+                            <MudListItem Class="password-list-item">
+                                <MudPaper Class="pa-4 password-card" Elevation="0">
+                                    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.FlexStart" Wrap="Wrap.Wrap" Spacing="2">
+                                        <MudStack Spacing="0" Class="password-meta">
+                                            <MudText Typo="Typo.body1" Class="fw-500">@password.Description</MudText>
+                                            <MudText Typo="Typo.body2" Class="text-muted">@password.Username</MudText>
+                                            <MudText Typo="Typo.caption" Class="text-muted">Criada em @password.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</MudText>
+                                        </MudStack>
 
-                        <MudTd DataLabel="Usuário">
-                            <MudText Typo="Typo.body2" Color="Color.Secondary">
-                                @context.Username
-                            </MudText>
-                        </MudTd>
+                                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Wrap="Wrap.Wrap">
+                                            <MudPaper Class="px-3 py-1 password-box" Elevation="0">
+                                                <MudText Typo="Typo.body2" Class="password-text">
+                                                    @DisplayPassword(password)
+                                                </MudText>
+                                            </MudPaper>
 
-                        <!-- Senha mais profissional -->
-                        <MudTd DataLabel="Senha">
-                            <MudPaper Class="px-3 py-1 password-box" Elevation="0">
-                                <MudText Typo="Typo.body2" Class="password-text">
-                                    @DisplayPassword(context)
-                                </MudText>
-                            </MudPaper>
-                        </MudTd>
+                                            <MudTooltip Text="Mostrar/Ocultar">
+                                                <MudIconButton Icon="@GetVisibilityIcon(password.Id)"
+                                                               Size="Size.Small"
+                                                               OnClick="@(() => ToggleVisibility(password.Id))" />
+                                            </MudTooltip>
 
-                        <MudTd DataLabel="Criada em">
-                            <MudText Typo="Typo.caption">
-                                @context.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
-                            </MudText>
-                        </MudTd>
+                                            <MudTooltip Text="Copiar senha">
+                                                <MudIconButton Icon="@Icons.Material.Filled.ContentCopy"
+                                                               Size="Size.Small"
+                                                               Color="Color.Primary"
+                                                               OnClick="@(() => CopyPassword(password.Secret))"
+                                                               Disabled="isCopying" />
+                                            </MudTooltip>
 
-                        <MudTd DataLabel="Ações" Class="text-right">
-                            <MudStack Row="true" Spacing="0">
+                                            <MudTooltip Text="Excluir">
+                                                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                               Size="Size.Small"
+                                                               Color="Color.Error"
+                                                               OnClick="@(() => DeletePassword(password.Id))"
+                                                               Disabled="deletingPasswordId == password.Id || isSaving" />
+                                            </MudTooltip>
+                                        </MudStack>
+                                    </MudStack>
+                                </MudPaper>
+                            </MudListItem>
+                        }
+                    </MudList>
 
-                                <MudTooltip Text="Mostrar/Ocultar">
-                                    <MudIconButton Icon="@GetVisibilityIcon(context.Id)"
-                                                   Size="Size.Small"
-                                                   OnClick="@(() => ToggleVisibility(context.Id))" />
-                                </MudTooltip>
-
-                                <MudTooltip Text="Copiar senha">
-                                    <MudIconButton Icon="@Icons.Material.Filled.ContentCopy"
-                                                   Size="Size.Small"
-                                                   Color="Color.Primary"
-                                                   OnClick="@(() => CopyPassword(context.Secret))"
-                                                   Disabled="isCopying" />
-                                </MudTooltip>
-
-                                <MudTooltip Text="Excluir">
-                                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
-                                                   Size="Size.Small"
-                                                   Color="Color.Error"
-                                                   OnClick="@(() => DeletePassword(context.Id))"
-                                                   Disabled="deletingPasswordId == context.Id || isSaving" />
-                                </MudTooltip>
-
-                            </MudStack>
-                        </MudTd>
-                    </RowTemplate>
-
-                    <PagerContent>
-                        <MudTablePager RowsPerPageString="Linhas por página" />
-                    </PagerContent>
-
-                    <NoRecordsContent>
-                        <MudText Typo="Typo.body2" Class="pa-4 text-center">
-                            Nenhuma senha cadastrada ainda.
-                        </MudText>
-                    </NoRecordsContent>
-
-                </MudTable>
+                    <MudStack Row="true" Justify="Justify.Center" Class="mt-4">
+                        <MudPagination Count="@totalPages" Selected="@currentPage" SelectedChanged="OnPageChanged" />
+                    </MudStack>
+                }
             </MudPaper>
         </MudItem>
     </MudGrid>
@@ -196,17 +185,65 @@ else
     private bool isReloading;
 
     private string _search = string.Empty;
+    private int currentPage = 1;
+    private int pageSize = 10;
+    private SortOption selectedSort = SortOption.Recentes;
 
-    private IEnumerable<PasswordEntry> filteredPasswords =>
-        string.IsNullOrWhiteSpace(_search)
-            ? passwords
-            : passwords.Where(p =>
-                p.Description.Contains(_search, StringComparison.OrdinalIgnoreCase) ||
-                p.Username.Contains(_search, StringComparison.OrdinalIgnoreCase));
+    private enum SortOption
+    {
+        Recentes,
+        Antigas,
+        Descricao,
+        Usuario
+    }
+
+    private IEnumerable<PasswordEntry> filteredPasswords
+    {
+        get
+        {
+            var filtered = string.IsNullOrWhiteSpace(_search)
+                ? passwords
+                : passwords.Where(p =>
+                    p.Description.Contains(_search, StringComparison.OrdinalIgnoreCase) ||
+                    p.Username.Contains(_search, StringComparison.OrdinalIgnoreCase));
+
+            return selectedSort switch
+            {
+                SortOption.Descricao => filtered.OrderBy(p => p.Description),
+                SortOption.Usuario => filtered.OrderBy(p => p.Username),
+                SortOption.Antigas => filtered.OrderBy(p => p.CreatedAtUtc),
+                _ => filtered.OrderByDescending(p => p.CreatedAtUtc)
+            };
+        }
+    }
+
+    private int totalPages => Math.Max(1, (int)Math.Ceiling(filteredPasswords.Count() / (double)pageSize));
+
+    private IEnumerable<PasswordEntry> pagedPasswords => filteredPasswords
+        .Skip((currentPage - 1) * pageSize)
+        .Take(pageSize);
 
     private void OnSearch(string value)
     {
         _search = value;
+        currentPage = 1;
+    }
+
+    private void OnSortChanged(SortOption option)
+    {
+        selectedSort = option;
+        currentPage = 1;
+    }
+
+    private void OnPageSizeChanged(int size)
+    {
+        pageSize = size;
+        currentPage = 1;
+    }
+
+    private void OnPageChanged(int page)
+    {
+        currentPage = page;
     }
 
     protected override async Task OnInitializedAsync()
@@ -406,6 +443,7 @@ else
         {
             isReloading = true;
             passwords = (await ApiClient.GetPasswordsAsync()).OrderByDescending(x => x.CreatedAtUtc).ToList();
+            currentPage = 1;
         }
         finally
         {
