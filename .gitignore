@@ -71,7 +71,6 @@ coverage*.xml
 # Publish
 publish/
 *.Publish.xml
-*.pubxml
 *.publishproj
 
 # Windows
