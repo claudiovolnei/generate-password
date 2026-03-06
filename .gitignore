@@ -115,4 +115,3 @@ $RECYCLE.BIN/
 
 #Plataforms
 *.Platforms
-/src/PasswordManager.Api/appsettings.json
