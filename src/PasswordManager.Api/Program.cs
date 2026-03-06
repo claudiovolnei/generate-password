@@ -29,7 +29,9 @@ var jwtSettings = builder.Configuration.GetSection("Jwt").Get<JwtSettings>() ?? 
 var swaggerUsername = builder.Configuration["SwaggerAuth:Username"] ?? throw new ArgumentNullException("SwaggerAuth:Username não pode ser null.");
 var swaggerPassword = builder.Configuration["SwaggerAuth:Password"] ?? throw new ArgumentNullException("SwaggerAuth:Password não pode ser null."); ;
 
-builder.Services.AddDataProtection();
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(builder.Environment.ContentRootPath, "keys")))
+    .SetApplicationName("PasswordManager");
 builder.Services.AddDbContext<PasswordManagerDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("PasswordManager")));
 builder.Services.AddScoped<IPasswordRepository, SqlPasswordRepository>();
