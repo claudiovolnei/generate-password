@@ -109,10 +109,10 @@ else
                 }
                 else
                 {
-                    <MudList Class="password-list">
+                    <MudList T="PasswordEntry" Class="password-list">
                         @foreach (var password in pagedPasswords)
                         {
-                            <MudListItem Class="password-list-item">
+                            <MudListItem T="PasswordEntry" Value="@password" Class="password-list-item">
                                 <MudPaper Class="pa-4 password-card" Elevation="0">
                                     <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.FlexStart" Wrap="Wrap.Wrap" Spacing="2">
                                         <MudStack Spacing="0" Class="password-meta">
