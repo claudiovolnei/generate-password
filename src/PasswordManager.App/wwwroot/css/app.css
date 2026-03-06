@@ -41,7 +41,7 @@ html, body {
 .password-box {
     background-color: var(--mud-palette-background-grey);
     border-radius: 8px;
-    max-width: 200px;
+    max-width: 220px;
     overflow: hidden;
 }
 
@@ -52,4 +52,28 @@ html, body {
 
 .search-field {
     width: 250px;
+}
+
+.sort-field,
+.page-size-field {
+    min-width: 180px;
+}
+
+.password-list {
+    background: transparent;
+    padding: 0;
+}
+
+.password-list-item {
+    padding: 0;
+}
+
+.password-card {
+    border: 1px solid rgba(255,255,255,.10);
+    border-radius: 12px;
+    background: rgba(255,255,255,.03);
+}
+
+.password-meta {
+    min-width: 220px;
 }
