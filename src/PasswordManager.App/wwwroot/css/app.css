@@ -77,3 +77,13 @@ html, body {
 .password-meta {
     min-width: 220px;
 }
+
+
+.username-text {
+    color: rgba(233, 236, 255, 0.92);
+    font-weight: 600;
+}
+
+.created-at-text {
+    color: rgba(233, 236, 255, 0.82);
+}
